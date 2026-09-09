@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>দৈনিক বাজারদর</title>
+<style>
+*{box-sizing:border-box}body{margin:0;font-family:"Noto Sans Bengali",Arial,sans-serif;background:#f4f7f6;color:#17231f}
+header{background:#0b6b4b;color:white;padding:28px 16px;text-align:center}
+header h1{margin:0 0 7px;font-size:32px}header p{margin:0;opacity:.9}
+.container{max-width:1050px;margin:25px auto;padding:0 15px}
+.tools{background:white;padding:18px;border-radius:14px;box-shadow:0 3px 12px #0001;margin-bottom:20px}
+.search{display:flex;gap:10px;margin-bottom:15px}.search input{flex:1;padding:13px;border:1px solid #ccd7d2;border-radius:9px;font-size:16px}
+button{border:0;border-radius:9px;padding:12px 17px;background:#0b6b4b;color:white;cursor:pointer;font-size:15px}
+button:hover{opacity:.9}.categories{display:flex;gap:8px;flex-wrap:wrap}.categories button{background:#e8f2ee;color:#07563d}.categories button.active{background:#0b6b4b;color:white}
+.card{background:white;border-radius:14px;box-shadow:0 3px 12px #0001;overflow:hidden}
+table{width:100%;border-collapse:collapse}th,td{padding:14px 12px;text-align:left;border-bottom:1px solid #edf1ef}th{background:#eef6f2;color:#155b46}.product{font-weight:bold}.price{font-weight:bold}.up{color:#c0392b}.down{color:#16804f}.same{color:#777}
+tr[data-clickable]{cursor:pointer}tr[data-clickable]:hover{background:#f7fbf9}
+.empty{text-align:center;padding:30px;color:#777}
+.history{margin-top:22px;background:white;padding:20px;border-radius:14px;box-shadow:0 3px 12px #0001}.history h2{margin-top:0}
+.chart{height:260px;display:flex;align-items:end;gap:12px;padding:20px 10px 35px;border-bottom:1px solid #ddd}
+.bar{flex:1;min-width:20px;background:#39a77d;border-radius:7px 7px 0 0;position:relative;display:flex;justify-content:center;align-items:flex-start}
+.bar span{position:absolute;top:-24px;font-size:12px}.bar label{position:absolute;bottom:-28px;font-size:12px;color:#666}
+footer{text-align:center;padding:25px;color:#66756f}
+@media(max-width:700px){header h1{font-size:25px}th:nth-child(2),td:nth-child(2){display:none}.search{flex-direction:column}table{font-size:13px}th,td{padding:10px 7px}}
+</style>
+</head>
+<body>
+<header>
+<h1>🛒 দৈনিক বাজারদর</h1>
+<p>প্রয়োজনীয় নিত্যপণ্যের দৈনিক মূল্য ও মূল্য পরিবর্তন</p>
+</header>
+
+<main class="container">
+<section class="tools">
+<div class="search">
+<input id="search" type="search" placeholder="পণ্যের নাম বা ক্যাটাগরি লিখুন...">
+<button onclick="searchProduct()">🔎 খুঁজুন</button>
+</div>
+<div class="categories" id="categories"></div>
+</section>
+
+<section class="card">
+<table>
+<thead><tr><th>পণ্য</th><th>ক্যাটাগরি</th><th>একক</th><th>আজকের দাম</th><th>পরিবর্তন</th></tr></thead>
+<tbody id="priceTable"></tbody>
+</table>
+</section>
+
+<section class="history">
+<h2 id="historyTitle">📈 ৭ দিনের মূল্য ইতিহাস</h2>
+<p id="historyText">টেবিলের যেকোনো পণ্যে ক্লিক করলে তার ইতিহাস দেখা যাবে।</p>
+<div id="chart" class="chart"></div>
+</section>
+</main>
+
+<footer>© 2026 দৈনিক বাজারদর | ডেমো ওয়েবসাইট</footer>
+
+<script>
+const products=[
+{name:"আলু",cat:"সবজি",unit:"১ কেজি",price:35,change:-5,history:[38,37,40,39,36,37,35]},
+{name:"পেঁয়াজ",cat:"সবজি",unit:"১ কেজি",price:90,change:8,history:[82,85,84,88,87,89,90]},
+{name:"মিনিকেট চাল",cat:"চাল ও ডাল",unit:"১ কেজি",price:75,change:0,history:[75,75,74,75,75,75,75]},
+{name:"মসুর ডাল",cat:"চাল ও ডাল",unit:"১ কেজি",price:125,change:4,history:[118,120,121,123,122,124,125]},
+{name:"রুই মাছ",cat:"মাছ",unit:"১ কেজি",price:380,change:-2,history:[390,395,400,390,385,382,380]},
+{name:"মুরগি",cat:"মাংস",unit:"১ কেজি",price:210,change:3,history:[202,205,206,208,209,205,210]},
+{name:"ডিম",cat:"ডিম ও দুধ",unit:"১ ডজন",price:150,change:3,history:[142,145,146,148,147,149,150]},
+{name:"আপেল",cat:"ফলমূল",unit:"১ কেজি",price:260,change:-1,history:[265,270,268,265,264,262,260]},
+{name:"সয়াবিন তেল",cat:"তেল ও মসলা",unit:"১ লিটার",price:185,change:0,history:[185,184,185,185,186,185,185]}
+];
+
+let current=products;
+
+const money=n=>"৳"+n;
+
+function render(data){
+ const t=document.getElementById("priceTable");
+ t.innerHTML=data.length ? data.map(p=>{
+   const i=products.indexOf(p);
+   const cls=p.change>0?"up":p.change<0?"down":"same";
+   const txt=p.change>0?"↑ "+p.change+"%":p.change<0?"↓ "+Math.abs(p.change)+"%":"—";
+   return `<tr data-clickable onclick="showHistory(${i})">
+   <td class="product">${p.name}</td><td>${p.cat}</td><td>${p.unit}</td>
+   <td class="price">${money(p.price)}</td><td class="${cls}">${txt}</td></tr>`;
+ }).join("") : `<tr><td colspan="5" class="empty">কোনো পণ্য পাওয়া যায়নি।</td></tr>`;
+}
+
+function searchProduct(){
+ const q=document.getElementById("search").value.trim().toLowerCase();
+ current=products.filter(p=>p.name.toLowerCase().includes(q)||p.cat.toLowerCase().includes(q));
+ render(current);
+}
+
+function filterCategory(cat){
+ current=cat==="সব"?products:products.filter(p=>p.cat===cat);
+ render(current);
+}
+
+function showHistory(i){
+ const p=products[i];
+ document.getElementById("historyTitle").textContent=p.name+" — ৭ দিনের ডেমো ইতিহাস";
+ document.getElementById("historyText").textContent="একক: "+p.unit+" • আজকের ডেমো দাম: "+money(p.price);
+ const max=Math.max(...p.history),min=Math.min(...p.history),range=max-min||1;
+ document.getElementById("chart").innerHTML=p.history.map((v,i)=>
+ `<div class="bar" style="height:${35+(v-min)/range*65}%"><span>${money(v)}</span><label>দিন ${i+1}</label></div>`
+ ).join("");
+}
+
+document.getElementById("search").addEventListener("keydown",e=>{if(e.key==="Enter")searchProduct()});
+
+const cats=["সব",...new Set(products.map(p=>p.cat))];
+document.getElementById("categories").innerHTML=cats.map((c,i)=>
+ `<button class="${i===0?'active':''}" onclick="filterCategory('${c}');setActive(this)">${c}</button>`
+).join("");
+
+function setActive(btn){
+ document.querySelectorAll(".categories button").forEach(b=>b.classList.remove("active"));
+ btn.classList.add("active");
+}
+
+render(products);
+showHistory(0);
+</script>
+</body>
+</html>
